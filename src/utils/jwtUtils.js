@@ -14,9 +14,8 @@ const signJWT = async (payload) => {
   }
 };
 
-const validateJWT = async (token) => {
+const validateJWT = (token) => {
   if (!secretKey) {
-    // if loading .env variable fails
     throw new Error("Missing secret encryption key");
   }
 
