@@ -68,4 +68,17 @@ const loginUser = async (req, res) => {
   }
 };
 
-module.exports = { registerUser, loginUser };
+const verifyJwt = async (req, res) => {
+  const { token } = req.body;
+  if (!token) {
+    return res.status(400).json({ error: "Token missing" });
+  }
+  try {
+    const decoded = validateJWT(token);
+    return res.status(200).json({ verified: true, message: decoded });
+  } catch (error) {
+    return res.status(401).json({ verified: false, error: error.message });
+  }
+};
+
+module.exports = { registerUser, loginUser, verifyJwt };
