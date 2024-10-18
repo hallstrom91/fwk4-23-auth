@@ -1,8 +1,19 @@
 # Auth Server 
 
-A simple JWT auth server that signs and verifies tokens for users.
+A simple JWT auth server that handles user registration, login, and JWT validation.
 
-## TTFHW
+## Table of Contents
+- [Setup](#setup)
+- [API Endpoints](#api-endpoints)
+  - [Register User](#register-user)
+  - [Login User](#login-user)
+  - [Verify JWT](#verify-jwt)
+- [Testing with Insomnia or Postman](#testing-with-insomnia-or-postman)
+
+
+## Setup
+
+### TTFHW
 
 1. Clone the repository:
 ```bash
@@ -21,79 +32,134 @@ npm install
 
 4. Create .env or .env.development.local in the root folder of project:
 ```bash
-JWT_SECRET=
+DB_HOST=
+DB_USER=
+DB_DATABASE=
+DB_PASSWORD=
 PORT=
+JWT_SECRET=
 ```
 5. Start the auth server:
-```bash
+```npm
 npm run dev
 ```
 
-## Testing with Insomnia or Postman
+## API Endpoints
 
-### Sign JWT Route
+### Register User
+**POST** `/auth/register`
+Registers a new user by providing `fullname`, `email`, and `password`.
 
-1. Add JSON object to request body:
-```REQUESTBODY
+**REQUEST BODY:**
+```JSON
 {
-  "userId": "12345",
-  "email": "user@example.com",
-  "role": "admin"
-}
-```
-2. Send **POST** request to: `localhost:3000/token/sign`
-   
-`Success`
-```RESPONSEBODY200
-{
-"token": "CREATED-AND-SIGNED-TOKEN"
+  "fullname": "John Doe",
+  "email": "johndoe@example.com",
+  "password": "yourpassword"
 }
 ```
 
-`Invalid payload`
-```RESPONSEBODY400
+**RESPONSE (SUCCESS 201):**
+```JSON
 {
-	"error": "Invalid payload"
+  "message": "User registered successfully"
+}
+```
+
+**Response (400 - Email already in use):**
+```JSON
+{
+  "error": "Email already in use"
+}
+```
+
+**Response (400 - Missing fields):**
+```JSON
+{
+  "error": "Name, email or password value missing."
+}
+```
+
+### Login User
+**POST** `auth/login`
+Authenticates a user by checking email and password, and returns a signed JWT if valid.
+
+**Request Body:**
+```JSON
+{
+  "email": "johndoe@example.com",
+  "password": "yourpassword"
+}
+```
+
+**Response (Success 200):**
+```JSON
+{
+  "message": "Login successful",
+  "token": "CREATED-AND-SIGNED-TOKEN"
+}
+```
+
+**Response (400 - Invalid email or password):**
+```JSON
+{
+  "error": "Invalid email or password"
 }
 ```
 
 
+**Response (400 - Missing fields):**
+```JSON
+{
+  "error": "Email or password value missing"
+}
+```
 
-### Verify JWT Route
-1. Collect returned token from response and add it to request body.
-  
-2. Add JSON object to request body:
-```REQUESTBODY
+
+### Verify JWT
+**POST** `/auth/verify`
+
+Verifies the validity of a JWT.
+
+**Request Body:**
+```JSON
 {
   "token": "ADD-JWT-TOKEN-HERE"
 }
 ```
-3. Send **POST** request to: `localhost:3000/token/verify` 
-
-`Success`
-```RESPONSEBODY200
+**Response (Success 200):**
+```JSON
 {
-	"message": "Token is valid",
-	"decoded": {
-		"userId": "12345",
-		"email": "user@example.com",
-		"role": "admin",
-		"iat": 1729084114,
-		"exp": 1729087714
-	}
+  "verified": true,
+  "message": {
+    "userId": "12345",
+    "email": "user@example.com",
+    "role": "admin",
+    "iat": 1729084114,
+    "exp": 1729087714
+  }
 }
 ```
 
-`Invalid or expired`
-```RESPSONEBODY401
+**Response (401 - Invalid/Expired token):**
+```JSON
 {
-	"error": "Invalid or expired token"
+  "verified": false,
+  "error": "Invalid or expired token"
 }
 ```
 
-`Missing`
-```RESPONSEBODY400
+**Response (400 - Missing token):**
+```JSON
 {
-	"error": "Token missing"
+  "error": "Token missing"
 }
 ```
+
+## Testing with Insomnia or Postman
+You can use Insomnia or Postman to test the API endpoints by sending the appropriate requests as documented above.
+
+### Example Requests:
+1. **Register User:** POST to `/auth/register` with a JSON body containing fullname, email, and password.
+2. **Login User:** POST to `/auth/login` with a JSON body containing email and password.
+3. **Verify JWT:** POST to `/auth/verify` with a JSON body containing the token received from login.
