@@ -117,7 +117,7 @@ Authenticates a user by checking email and password, and returns a signed JWT if
 
 
 ### Verify JWT
-**POST** `/auth/verify`
+**POST** `/auth/verifyjwt`
 
 Verifies the validity of a JWT.
 
@@ -162,4 +162,4 @@ You can use Insomnia or Postman to test the API endpoints by sending the appropr
 ### Example Requests:
 1. **Register User:** POST to `/auth/register` with a JSON body containing fullname, email, and password.
 2. **Login User:** POST to `/auth/login` with a JSON body containing email and password.
-3. **Verify JWT:** POST to `/auth/verify` with a JSON body containing the token received from login.
+3. **Verify JWT:** POST to `/auth/verifyjwt` with a JSON body containing the token received from login.
