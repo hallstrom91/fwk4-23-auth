@@ -3,9 +3,11 @@ const express = require("express");
 const app = express();
 const helmet = require("helmet");
 const cors = require("cors");
+const cookieParser = require("cookie-parser");
 const authRoutes = require("./routes/authRoutes.js");
 
 app.use(express.json());
+app.use(cookieParser());
 app.use(helmet());
 app.use(cors());
 
