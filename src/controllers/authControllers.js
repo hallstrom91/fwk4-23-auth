@@ -38,6 +38,7 @@ const loginUser = async (req, res) => {
   if (!email || !password) {
     return res.status(400).json({ error: "Email or password value missing" });
   }
+
   try {
     const [rows] = await pool.query("SELECT * FROM users WHERE email = ?", [
       email,
@@ -62,17 +63,28 @@ const loginUser = async (req, res) => {
     };
 
     const token = await signJWT(payload);
-    return res.status(200).json({ message: "Login successful", token });
+
+    res.cookie("token", token, {
+      httpOnly: false,
+      sameSite: "lax",
+    });
+    return res.status(200).json({ message: "Login successful" });
   } catch (error) {
     return res.status(500).json({ error: "Internal server error" });
   }
 };
 
 const verifyJwt = async (req, res) => {
-  const { token } = req.body;
+  const authHeader = req.headers["authorization"];
+  const token =
+    authHeader && authHeader.startsWith("Bearer ")
+      ? authHeader.split(" ")[1]
+      : null;
+
   if (!token) {
     return res.status(400).json({ error: "Token missing" });
   }
+
   try {
     const decoded = validateJWT(token);
     return res.status(200).json({ verified: true, message: decoded });
