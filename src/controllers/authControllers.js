@@ -60,6 +60,7 @@ const loginUser = async (req, res) => {
       userId: user.id,
       email: user.email,
       role: user.role,
+      avatar: user.avatar,
     };
 
     const token = await signJWT(payload);
@@ -68,7 +69,7 @@ const loginUser = async (req, res) => {
       httpOnly: false,
       sameSite: "lax",
     });
-    return res.status(200).json({ message: "Login successful" });
+    return res.status(200).json({ message: "Login successful", user: payload });
   } catch (error) {
     return res.status(500).json({ error: "Internal server error" });
   }
