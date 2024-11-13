@@ -1,5 +1,9 @@
+require("dotenv").config();
 const { signJWT, validateJWT } = require("../utils/jwtUtils.js");
 const { hashPassword, verifyPassword } = require("../utils/bcryptjs.js");
+const axios = require("axios");
+
+const RECAPTCHA_SECRET = process.env.RECAPTCHA_SECRET;
 const pool = require("../utils/connectDB.js");
 
 const registerUser = async (req, res) => {
@@ -14,7 +18,7 @@ const registerUser = async (req, res) => {
   try {
     const [existingUser] = await pool.query(
       "SELECT email FROM users WHERE email = ?",
-      [email],
+      [email]
     );
     if (existingUser.length > 0) {
       return res.status(400).json({ error: "Email already in use" });
@@ -24,7 +28,7 @@ const registerUser = async (req, res) => {
 
     await pool.query(
       "INSERT INTO users (fullname, email, password) VALUES (?, ?, ?)",
-      [fullname, email, hashedPassword],
+      [fullname, email, hashedPassword]
     );
     return res.status(201).json({ message: "User registered successfully" });
   } catch (error) {
@@ -33,7 +37,56 @@ const registerUser = async (req, res) => {
 };
 
 const loginUser = async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, recaptchaToken } = req.body;
+
+  // Verify the reCAPTCHA token with Google
+  try {
+    const recaptchaResponse = await axios.post(
+      `https://www.google.com/recaptcha/api/siteverify`,
+      null,
+      {
+        params: {
+          secret: RECAPTCHA_SECRET,
+          response: recaptchaToken,
+        },
+      }
+    );
+
+    const { success, "error-codes": errorCodes } = recaptchaResponse.data;
+
+    // Detailed logging for reCAPTCHA success
+    if (success) {
+      console.log("reCAPTCHA verification succeeded");
+      console.log("Challenge timestamp:", recaptchaResponse.data.challenge_ts); // Optional: Timestamp of the reCAPTCHA challenge
+      console.log("Hostname:", recaptchaResponse.data.hostname); // Optional: Hostname of the site that verified the reCAPTCHA
+    } else {
+      // Provide more context for reCAPTCHA failure
+      console.error("reCAPTCHA verification failed:", errorCodes);
+
+      let errorMessage = "reCAPTCHA verification failed. ";
+
+      if (errorCodes.includes("timeout-or-duplicate")) {
+        errorMessage +=
+          "The reCAPTCHA response was either expired or duplicated. Try refreshing the page and submitting again.";
+      } else if (errorCodes.includes("invalid-input-secret")) {
+        errorMessage +=
+          "The secret key provided is incorrect. Ensure you're using the correct reCAPTCHA secret key.";
+      } else if (errorCodes.includes("missing-input-response")) {
+        errorMessage +=
+          "The reCAPTCHA response token is missing. Ensure the frontend is sending the token.";
+      } else {
+        errorMessage += "Check the reCAPTCHA configuration and tokens.";
+      }
+
+      return res.status(400).json({
+        message: errorMessage,
+        errorCodes: errorCodes, // Include error codes for debugging
+      });
+    }
+  } catch (error) {
+    console.error("Error verifying reCAPTCHA:", error);
+    return res.status(500).json({ message: "Error verifying reCAPTCHA" });
+  }
 
   if (!email || !password) {
     return res.status(400).json({ error: "Email or password value missing" });
@@ -45,47 +98,35 @@ const loginUser = async (req, res) => {
     ]);
 
     if (rows.length === 0) {
-      return res.status(400).json({ error: "Invalid email or password" });
+      return res.status(400).json({ error: "Invalid credentials" });
     }
 
     const user = rows[0];
 
     const isPasswordValid = await verifyPassword(password, user.password);
-
     if (!isPasswordValid) {
-      return res.status(400).json({ error: "Invalid email or password" });
+      return res.status(400).json({ error: "Invalid credentials" });
     }
 
     const payload = {
       userId: user.id,
       email: user.email,
       role: user.role,
-      avatar: user.avatar,
     };
 
     const token = await signJWT(payload);
-
-    res.cookie("token", token, {
-      httpOnly: false,
-      sameSite: "lax",
-    });
-    return res.status(200).json({ message: "Login successful", user: payload });
+    return res.status(200).json({ message: "Login successful", token });
   } catch (error) {
+    console.error("Error during login:", error);
     return res.status(500).json({ error: "Internal server error" });
   }
 };
 
 const verifyJwt = async (req, res) => {
-  const authHeader = req.headers["authorization"];
-  const token =
-    authHeader && authHeader.startsWith("Bearer ")
-      ? authHeader.split(" ")[1]
-      : null;
-
+  const { token } = req.body;
   if (!token) {
     return res.status(400).json({ error: "Token missing" });
   }
-
   try {
     const decoded = validateJWT(token);
     return res.status(200).json({ verified: true, message: decoded });
